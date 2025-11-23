@@ -1,6 +1,7 @@
+// ...existing code...
 // cspell:disable
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,6 +12,9 @@ import {
   TextInput,
   SafeAreaView,
   Alert,
+  ImageBackground,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
 
 // Tipagem do item do cardápio
@@ -21,6 +25,12 @@ interface MenuItem {
   description?: string;
   price: number;
 }
+
+// Imagem de fundo local (marmorizada)
+const backgroundImage = require("./marmorizadacinza.jpg");
+
+// Logo local
+const logoImage = require("./logo.png");
 
 // Categorias de itens do cardápio
 const categorizedMenuItems: Record<string, MenuItem[]> = {
@@ -129,6 +139,9 @@ const categorizedMenuItems: Record<string, MenuItem[]> = {
 };
 
 export default function App(): JSX.Element {
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(width), [width]);
+
   const [cart, setCart] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     "Comidas",
@@ -196,401 +209,498 @@ export default function App(): JSX.Element {
     setPaymentMethod("");
   };
 
-  /* --- TELAS DO APP --- */
+  const renderLogo = () => <Image source={logoImage} style={styles.logo} />;
 
   if (orderPlaced) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>🎉 Pedido Realizado!</Text>
-        <Text style={styles.text}>Seu pedido foi realizado com sucesso.</Text>
-        <Text style={styles.text}>Aguarde o preparo e a entrega!</Text>
-        <View style={styles.summaryContainer}>
-          <Text style={styles.totalText}>
-            Total Pago: R$ {calculateTotal()}
-          </Text>
-          <Text style={styles.paymentText}>Método: {paymentMethod}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.finalizeButton, { marginTop: 30 }]}
-          onPress={resetOrder}
-        >
-          <Text style={styles.finalizeButtonText}>Voltar para o Menu</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <ImageBackground
+        source={backgroundImage}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          {renderLogo()}
+          <Text style={styles.title}>🎉 Pedido Realizado!</Text>
+          <Text style={styles.text}>Seu pedido foi realizado com sucesso.</Text>
+          <Text style={styles.text}>Aguarde o preparo e a entrega!</Text>
+          <View style={styles.summaryContainer}>
+            <Text style={styles.totalText}>
+              Total Pago: R$ {calculateTotal()}
+            </Text>
+            <Text style={styles.paymentText}>Método: {paymentMethod}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.finalizeButton, { marginTop: 30 }]}
+            onPress={resetOrder}
+          >
+            <Text style={styles.finalizeButtonText}>Voltar para o Menu</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   if (!isRegistered) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>🍔 Lanchonete On-line</Text>
-        <Text style={styles.subtitle}>👋 Bem-vindo! Faça seu Cadastro</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Nome"
-          value={name}
-          onChangeText={setName}
-          placeholderTextColor="#999"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Telefone"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
-          placeholderTextColor="#999"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          placeholderTextColor="#999"
-          autoCapitalize="none"
-        />
-        <TouchableOpacity
-          style={styles.finalizeButton}
-          onPress={handleRegister}
-        >
-          <Text style={styles.finalizeButtonText}>Avançar</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <ImageBackground
+        source={backgroundImage}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centerWrapper}>
+            {renderLogo()}
+            <Text style={styles.title}>🍔 Lanchonete On-line</Text>
+            <Text style={styles.subtitle}>👋 Bem-vindo! Faça seu Cadastro</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome"
+              value={name}
+              onChangeText={setName}
+              placeholderTextColor="#999"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Telefone"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+              placeholderTextColor="#999"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={styles.finalizeButton}
+              onPress={handleRegister}
+            >
+              <Text style={styles.finalizeButtonText}>Avançar</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   if (isPaymentScreen) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>💳 Escolha o Método de Pagamento</Text>
-        <View style={styles.paymentButtonContainer}>
-          <TouchableOpacity
-            style={styles.paymentButton}
-            onPress={() => handlePaymentSelection("Pix")}
-          >
-            <Text style={styles.paymentButtonText}>💰 Pix</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.paymentButton}
-            onPress={() => handlePaymentSelection("Dinheiro")}
-          >
-            <Text style={styles.paymentButtonText}>💵 Dinheiro</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.paymentButton}
-            onPress={() => handlePaymentSelection("Cartão de Débito")}
-          >
-            <Text style={styles.paymentButtonText}>💳 Cartão de Débito</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.paymentButton}
-            onPress={() => handlePaymentSelection("Cartão de Crédito")}
-          >
-            <Text style={styles.paymentButtonText}>💳 Cartão de Crédito</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.paymentButton}
-            onPress={() => handlePaymentSelection("Pagar pelo Aplicativo")}
-          >
-            <Text style={styles.paymentButtonText}>📱 Pagar pelo App</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <ImageBackground
+        source={backgroundImage}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centerWrapper}>
+            {renderLogo()}
+            <Text style={styles.title}>💳 Escolha o Método de Pagamento</Text>
+            <View style={styles.paymentButtonContainer}>
+              <TouchableOpacity
+                style={styles.paymentButton}
+                onPress={() => handlePaymentSelection("Pix")}
+              >
+                <Text style={styles.paymentButtonText}>💰 Pix</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.paymentButton}
+                onPress={() => handlePaymentSelection("Dinheiro")}
+              >
+                <Text style={styles.paymentButtonText}>💵 Dinheiro</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.paymentButton}
+                onPress={() => handlePaymentSelection("Cartão de Débito")}
+              >
+                <Text style={styles.paymentButtonText}>💳 Cartão de Débito</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.paymentButton}
+                onPress={() => handlePaymentSelection("Cartão de Crédito")}
+              >
+                <Text style={styles.paymentButtonText}>💳 Cartão de Crédito</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.paymentButton}
+                onPress={() => handlePaymentSelection("Pagar pelo Aplicativo")}
+              >
+                <Text style={styles.paymentButtonText}>📱 Pagar pelo App</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   if (isConfirmationScreen) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>📝 Resumo e Confirmação</Text>
-        <ScrollView style={{ width: "100%", flex: 1 }}>
-          {cart.length > 0 ? (
-            cart.map((item, index) => (
-              <View
-                key={`${item.id}-${index}`}
-                style={styles.confirmationItemContainer}
-              >
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.confirmationImage}
-                />
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemTitle}>{item.name}</Text>
-                  <Text style={styles.itemDescription}>{item.description}</Text>
-                  <Text style={styles.itemPrice}>
-                    R$ {item.price.toFixed(2)}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => removeFromCart(index)}
+      <ImageBackground
+        source={backgroundImage}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centerWrapper}>
+            {renderLogo()}
+            <Text style={styles.title}>📝 Resumo e Confirmação</Text>
+          </View>
+          <ScrollView style={{ width: "100%", flex: 1 }}>
+            {cart.length > 0 ? (
+              cart.map((item, index) => (
+                <View
+                  key={`${item.id}-${index}`}
+                  style={styles.confirmationItemContainer}
                 >
-                  <Text style={styles.removeButtonText}>❌</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyCartText}>Carrinho vazio</Text>
-          )}
-        </ScrollView>
-        <View style={styles.summaryContainer}>
-          <Text style={styles.cartItemCount}>Itens: {cart.length}</Text>
-          <Text style={styles.paymentText}>Pagamento: {paymentMethod}</Text>
-          <Text style={styles.totalText}>Total: R$ {calculateTotal()}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.finalizeButton}
-          onPress={handlePlaceOrder}
-        >
-          <Text style={styles.finalizeButtonText}>✅ Efetuar Pedido</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.confirmationImage}
+                  />
+                  <View style={styles.itemDetails}>
+                    <Text style={styles.itemTitle}>{item.name}</Text>
+                    <Text style={styles.itemDescription}>
+                      {item.description}
+                    </Text>
+                    <Text style={styles.itemPrice}>
+                      R$ {item.price.toFixed(2)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeFromCart(index)}
+                  >
+                    <Text style={styles.removeButtonText}>❌</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyCartText}>Carrinho vazio</Text>
+            )}
+          </ScrollView>
+          <View style={styles.summaryContainer}>
+            <Text style={styles.cartItemCount}>Itens: {cart.length}</Text>
+            <Text style={styles.paymentText}>Pagamento: {paymentMethod}</Text>
+            <Text style={styles.totalText}>Total: R$ {calculateTotal()}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.finalizeButton}
+            onPress={handlePlaceOrder}
+          >
+            <Text style={styles.finalizeButtonText}>✅ Efetuar Pedido</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>🍔 Cardápio</Text>
-      <Text style={styles.cartBadge}>
-        🛒 {cart.length} itens (Total: R$ {calculateTotal()})
-      </Text>
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerWrapper}>
+          {renderLogo()}
+          <Text style={styles.title}>🍔 Cardápio</Text>
+          <Text style={styles.cartBadge}>
+            🛒 {cart.length} itens (Total: R$ {calculateTotal()})
+          </Text>
+        </View>
 
-      <View style={styles.buttonContainer}>
-        {Object.keys(categorizedMenuItems).map((category) => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <Text
+        <View style={styles.buttonContainer}>
+          {Object.keys(categorizedMenuItems).map((category) => (
+            <TouchableOpacity
+              key={category}
               style={[
-                styles.categoryButtonText,
-                selectedCategory === category &&
-                  styles.categoryButtonTextActive,
+                styles.categoryButton,
+                selectedCategory === category && styles.categoryButtonActive,
               ]}
+              onPress={() => setSelectedCategory(category)}
             >
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.categoryButtonText,
+                  selectedCategory === category &&
+                    styles.categoryButtonTextActive,
+                ]}
+              >
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <ScrollView style={{ width: "100%", flex: 1 }}>
-        {selectedCategory && (
-          <View>
-            <Text style={styles.categoryTitle}>{selectedCategory}</Text>
+        <ScrollView style={{ width: "100%", flex: 1 }}>
+          {selectedCategory && (
+            <View>
+              <Text style={styles.categoryTitle}>{selectedCategory}</Text>
 
-            <View style={styles.menuGridContainer}>
-              {categorizedMenuItems[selectedCategory].map((item) => (
-                <View key={item.id} style={styles.itemContainer}>
-                  <Image source={{ uri: item.image }} style={styles.image} />
-                  <Text style={styles.itemTitle}>{item.name}</Text>
-                  <Text style={styles.itemDescription}>{item.description}</Text>
-                  <Text style={styles.itemPrice}>
-                    R$ {item.price.toFixed(2)}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => addToCart(item)}
-                  >
-                    <Text style={styles.addButtonText}>➕ Adicionar</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+              <View style={styles.menuGridContainer}>
+                {categorizedMenuItems[selectedCategory].map((item) => (
+                  <View key={item.id} style={styles.itemContainer}>
+                    <Image source={{ uri: item.image }} style={styles.image} />
+                    <Text style={styles.itemTitle}>{item.name}</Text>
+                    <Text style={styles.itemDescription}>
+                      {item.description}
+                    </Text>
+                    <Text style={styles.itemPrice}>
+                      R$ {item.price.toFixed(2)}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.addButton}
+                      onPress={() => addToCart(item)}
+                    >
+                      <Text style={styles.addButtonText}>➕ Adicionar</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
 
-      <TouchableOpacity
-        style={styles.finalizeButton}
-        onPress={handleFinalizeOrder}
-      >
-        <Text style={styles.finalizeButtonText}>🛍️ Finalizar Pedido</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+        <TouchableOpacity
+          style={styles.finalizeButton}
+          onPress={handleFinalizeOrder}
+        >
+          <Text style={styles.finalizeButtonText}>🛍️ Finalizar Pedido</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-    color: "#FFA500",
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#333",
-  },
-  input: {
-    width: "90%",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    marginBottom: 12,
-    fontSize: 16,
-    backgroundColor: "#fff",
-  },
-  cartBadge: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 15,
-    flexWrap: "wrap",
-  },
-  categoryButton: {
-    backgroundColor: "#fff",
-    padding: 12,
-    marginHorizontal: 5,
-    marginBottom: 8,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#FFA500",
-  },
-  categoryButtonActive: { backgroundColor: "#FFA500" },
-  categoryButtonText: { color: "#FFA500", fontWeight: "bold", fontSize: 14 },
-  categoryButtonTextActive: { color: "#fff" },
-  categoryTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-    marginTop: 15,
-    textAlign: "left",
-    color: "#333",
-    paddingLeft: 5,
-  },
-  menuGridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 5,
-  },
-  itemContainer: {
-    backgroundColor: "#ffffff",
-    padding: 10,
-    borderRadius: 10,
-    marginVertical: 8,
-    alignItems: "center",
-    width: "48%",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  confirmationItemContainer: {
-    backgroundColor: "#ffffff",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    elevation: 2,
-  },
-  image: { width: "100%", height: 100, borderRadius: 8 },
-  confirmationImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  itemDetails: { flex: 1 },
-  itemTitle: { fontSize: 16, fontWeight: "bold", marginTop: 8, color: "#333" },
-  itemDescription: { fontSize: 12, color: "#666", marginTop: 4 },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#FFA500",
-    marginTop: 4,
-  },
-  addButton: {
-    backgroundColor: "#FFA500",
-    padding: 8,
-    marginTop: 8,
-    borderRadius: 6,
-    width: "100%",
-    alignItems: "center",
-  },
-  addButtonText: { color: "#fff", fontWeight: "bold", fontSize: 12 },
-  removeButton: { padding: 8 },
-  removeButtonText: { fontSize: 18 },
-  finalizeButton: {
-    backgroundColor: "#FFA500",
-    padding: 15,
-    marginTop: 15,
-    marginBottom: 15,
-    borderRadius: 8,
-    width: "90%",
-    alignItems: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-  },
-  finalizeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 18 },
-  paymentButtonContainer: { width: "90%", marginTop: 20 },
-  paymentButton: {
-    backgroundColor: "#FFA500",
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  paymentButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  summaryContainer: {
-    width: "90%",
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    marginTop: 15,
-    borderLeftWidth: 5,
-    borderLeftColor: "#FFA500",
-  },
-  cartItemCount: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  totalText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFA500",
-    marginTop: 8,
-  },
-  paymentText: { fontSize: 16, fontWeight: "bold", color: "#333" },
-  emptyCartText: {
-    fontSize: 16,
-    color: "#999",
-    textAlign: "center",
-    marginVertical: 20,
-  },
-  text: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginTop: 12,
-    color: "#333",
-  },
-});
+/**
+ * Cria styles responsivos baseado na largura.
+ */
+function createStyles(width: number) {
+  const baseWidth = 375;
+  const scale = Math.max(0.85, Math.min(1.2, width / baseWidth));
+
+  const logoSize = width >= 900 ? 180 : width >= 600 ? 140 : 100;
+  const itemWidth = width >= 900 ? "30%" : width >= 600 ? "48%" : "100%";
+
+  const smallFont = Math.round(12 * scale);
+  const normalFont = Math.round(14 * scale);
+  const largeFont = Math.round(18 * scale);
+  const titleFont = Math.round(24 * scale);
+
+  return StyleSheet.create({
+    backgroundImage: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
+    },
+    container: {
+      flex: 1,
+      padding: Math.round(16 * scale),
+      paddingTop:
+        Platform.OS === "ios"
+          ? Math.round(24 * (width >= 600 ? 1.1 : 1))
+          : Math.round(18 * scale),
+      backgroundColor: "rgba(0,0,0,0.28)",
+      alignItems: "center",
+    },
+    // wrapper usado para centralizar logo + formulários/headers
+    centerWrapper: {
+      width: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: Math.round(8 * scale),
+    },
+    logo: {
+      width: logoSize,
+      height: logoSize,
+      resizeMode: "contain",
+      // não usar absolute aqui para ficar no fluxo e centralizado
+      marginBottom: Math.round(12 * scale),
+      zIndex: 10,
+      borderRadius: Math.round(12 * scale),
+      padding: Math.round(4 * scale),
+      backgroundColor: "rgba(255,255,255,0.0)",
+      // sombra
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3,
+      elevation: 5,
+    },
+    title: {
+      fontSize: titleFont,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: Math.round(10 * scale),
+      color: "#FFA500",
+    },
+    subtitle: {
+      fontSize: Math.round(18 * scale),
+      fontWeight: "bold",
+      marginBottom: Math.round(12 * scale),
+      color: "#fff",
+    },
+    input: {
+      width: "90%",
+      padding: Math.round(12 * scale),
+      borderWidth: 1,
+      borderColor: "#ddd",
+      borderRadius: 8,
+      marginBottom: Math.round(12 * scale),
+      fontSize: normalFont,
+      backgroundColor: "#fff",
+    },
+    cartBadge: {
+      fontSize: normalFont,
+      fontWeight: "bold",
+      color: "#fff",
+      marginBottom: Math.round(12 * scale),
+    },
+    buttonContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      marginBottom: Math.round(12 * scale),
+      flexWrap: "wrap",
+    },
+    categoryButton: {
+      backgroundColor: "#fff",
+      padding: Math.round(10 * scale),
+      marginHorizontal: Math.round(6 * scale),
+      marginBottom: Math.round(8 * scale),
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: "#FFA500",
+    },
+    categoryButtonActive: { backgroundColor: "#FFA500" },
+    categoryButtonText: { color: "#FFA500", fontWeight: "bold", fontSize: normalFont },
+    categoryButtonTextActive: { color: "#fff" },
+    categoryTitle: {
+      fontSize: Math.round(20 * scale),
+      fontWeight: "bold",
+      marginBottom: Math.round(12 * scale),
+      marginTop: Math.round(12 * scale),
+      textAlign: "left",
+      color: "#fff",
+      paddingLeft: 5,
+    },
+    menuGridContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      paddingHorizontal: 5,
+    },
+    itemContainer: {
+      backgroundColor: "rgba(255,255,255,0.95)",
+      padding: Math.round(10 * scale),
+      borderRadius: 10,
+      marginVertical: Math.round(8 * scale),
+      alignItems: "center",
+      width: itemWidth,
+      elevation: 3,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+    },
+    confirmationItemContainer: {
+      backgroundColor: "#ffffff",
+      padding: Math.round(12 * scale),
+      borderRadius: 10,
+      marginBottom: Math.round(10 * scale),
+      flexDirection: "row",
+      alignItems: "center",
+      elevation: 2,
+    },
+    image: { width: "100%", height: Math.round(100 * scale), borderRadius: 8 },
+    confirmationImage: {
+      width: Math.round(80 * scale),
+      height: Math.round(80 * scale),
+      borderRadius: 8,
+      marginRight: Math.round(10 * scale),
+    },
+    itemDetails: { flex: 1 },
+    itemTitle: { fontSize: normalFont + 2, fontWeight: "bold", marginTop: Math.round(8 * scale), color: "#333" },
+    itemDescription: { fontSize: smallFont, color: "#666", marginTop: Math.round(4 * scale) },
+    itemPrice: {
+      fontSize: normalFont,
+      fontWeight: "bold",
+      color: "#FFA500",
+      marginTop: Math.round(6 * scale),
+    },
+    addButton: {
+      backgroundColor: "#FFA500",
+      padding: Math.round(8 * scale),
+      marginTop: Math.round(8 * scale),
+      borderRadius: 6,
+      width: "100%",
+      alignItems: "center",
+    },
+    addButtonText: { color: "#fff", fontWeight: "bold", fontSize: smallFont },
+    removeButton: { padding: Math.round(8 * scale) },
+    removeButtonText: { fontSize: Math.round(18 * scale) },
+    finalizeButton: {
+      backgroundColor: "#FFA500",
+      padding: Math.round(14 * scale),
+      marginTop: Math.round(14 * scale),
+      marginBottom: Math.round(14 * scale),
+      borderRadius: 8,
+      width: "90%",
+      alignItems: "center",
+      elevation: 3,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3,
+    },
+    finalizeButtonText: { color: "#fff", fontWeight: "bold", fontSize: largeFont },
+    paymentButtonContainer: { width: "90%", marginTop: Math.round(16 * scale) },
+    paymentButton: {
+      backgroundColor: "#FFA500",
+      padding: Math.round(14 * scale),
+      marginVertical: Math.round(8 * scale),
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    paymentButtonText: { color: "#fff", fontWeight: "bold", fontSize: normalFont },
+    summaryContainer: {
+      width: "90%",
+      backgroundColor: "#fff",
+      padding: Math.round(14 * scale),
+      borderRadius: 10,
+      marginBottom: Math.round(10 * scale),
+      marginTop: Math.round(14 * scale),
+      borderLeftWidth: 5,
+      borderLeftColor: "#FFA500",
+    },
+    cartItemCount: {
+      fontSize: normalFont,
+      fontWeight: "bold",
+      color: "#333",
+      marginBottom: Math.round(8 * scale),
+    },
+    totalText: {
+      fontSize: Math.round(20 * scale),
+      fontWeight: "bold",
+      color: "#FFA500",
+      marginTop: Math.round(8 * scale),
+    },
+    paymentText: { fontSize: normalFont, fontWeight: "bold", color: "#333" },
+    emptyCartText: {
+      fontSize: normalFont,
+      color: "#ddd",
+      textAlign: "center",
+      marginVertical: Math.round(20 * scale),
+    },
+    text: {
+      fontSize: normalFont,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginTop: Math.round(12 * scale),
+      color: "#fff",
+    },
+  });
+}
+// ...existing code...
