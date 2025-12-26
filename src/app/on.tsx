@@ -1,6 +1,5 @@
 // cspell:disable
-
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,1563 +13,378 @@ import {
   ImageBackground,
   useWindowDimensions,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 
-// Tipagem do item do cardápio
-interface MenuItem {
-  id: string;
-  name: string;
-  image: string;
-  description?: string;
-  price: number;
-}
+import { menuItems, categories, MenuItem } from './menuData';
 
-// Tipagem para Item do Carrinho com Quantidade
 interface CartItem {
   item: MenuItem;
   quantity: number;
+  note: string; 
 }
 
-// Imagem de fundo local (marmorizada)
 const backgroundImage = require("./marmorizadacinza.jpg");
-
-// Logo local
 const logoImage = require("./logo.png");
-
-// Estrutura dos métodos de pagamento para facilitar a renderização e ícones
-const paymentOptions = [
-    { name: "Pix", icon: "🔑", description: "Pagamento instantâneo no checkout.", method: "Pix" },
-    { name: "Cartão de Crédito", icon: "💳", description: "Pagar na entrega.", method: "Cartão de Crédito" },
-    { name: "Cartão de Débito", icon: "💳", description: "Pagar na entrega.", method: "Cartão de Débito" },
-    { name: "Dinheiro", icon: "💵", description: "Pagar na entrega (opção de troco).", method: "Dinheiro" },
-    { name: "Pagar pelo Aplicativo", icon: "📱", description: "Débito automático no app.", method: "Pagar pelo Aplicativo" }
-];
-
-
-// Categorias de itens do cardápio
-const categorizedMenuItems: Record<string, MenuItem[]> = {
-  Lanches: [ // Substitui a categoria "Comidas"
-    {
-      id: "1",
-      name: "Hambúrguer Clássico",
-      image:
-        "https://st4.depositphotos.com/1020618/23910/i/450/depositphotos_239107218-stock-photo-tasty-burger-with-french-fries.jpg",
-      description: "Delicioso hambúrguer artesanal com queijo, alface e tomate.",
-      price: 35.0,
-    },
-    {
-      id: "4",
-      name: "Cachorro-quente Gourmet",
-      image:
-        "https://www.cnnbrasil.com.br/viagemegastronomia/wp-content/uploads/sites/5/2022/09/dia-do-cachorro-quente.jpg?w=1200&h=1200&crop=1",
-      description: "Salsicha artesanal, purê de batata, milho e batata palha.",
-      price: 15.0,
-    },
-    {
-      id: "21",
-      name: "Sanduíche Natural de Frango",
-      image:
-        "https://st3.depositphotos.com/1000300/12530/i/450/depositphotos_125304602-stock-photo-chicken-breast-sandwich.jpg",
-      description: "Pão integral, frango desfiado, ricota e vegetais frescos.",
-      price: 22.0,
-    },
-    {
-      id: "22",
-      name: "Wrap de Carne Seca",
-      image:
-        "https://img.freepik.com/fotos-premium/wrap-mexicano-com-carne-e-salada-em-un-fundo-branco_662214-36.jpg",
-      description: "Massa de wrap com carne seca desfiada e cream cheese.",
-      price: 28.0,
-    },
-    {
-      id: "23",
-      name: "Porção de Batata Rústica",
-      image:
-        "https://img.freepik.com/fotos-premium/batatas-fritas-crocantes-em-uma-tigela_960786-191.jpg",
-      description: "Batatas fritas rústicas com alho e alecrim.",
-      price: 19.9,
-    },
-    // NOVOS ITENS DE LANCHES
-    {
-      id: "29",
-      name: "Misto Quente",
-      image:
-        "https://static.itdg.com.br/images/360-240/misto-quente-na-chapa-1-8e7c15efd4d5e9.jpg",
-      description: "Pão de forma na chapa, queijo mussarela e presunto.",
-      price: 8.5,
-    },
-    {
-      id: "30",
-      name: "Pastel de Queijo",
-      image:
-        "https://st4.depositphotos.com/1000300/21575/i/450/depositphotos_215757752-stock-photo-pastel-frito-fried-brazilian-pastry.jpg",
-      description: "Pastel crocante recheado com queijo minas.",
-      price: 9.0,
-    },
-    {
-      id: "31",
-      name: "Coxinha de Frango com Catupiry",
-      image:
-        "https://static.itdg.com.br/images/360-240/coxinha-de-frango-com-catupiry-9f6b9c.jpg",
-      description: "A tradicional coxinha de frango desfiado com catupiry.",
-      price: 7.5,
-    },
-  ],
-  Sobremesas: [
-    {
-      id: "5",
-      name: "Torta Holandesa Cremosa", // Nome atualizado
-      image:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOMP2cw8UH-5vGcFVWkoOgSYhhxHfnsmfb5g&s",
-      description: "Base de biscoito, creme holandês e cobertura de chocolate.",
-      price: 15.0,
-    },
-    {
-      id: "6",
-      name: "Pudim de Leite Condensado", // Nome atualizado
-      image:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXx8P4TFhkkFXOo3P73PGJXcZS03sPX3dagg&s",
-      description: "Pudim tradicional de leite condensado com calda de caramelo.",
-      price: 13.5,
-    },
-    {
-      id: "11",
-      name: "Mousse de Maracujá Cremoso", // Nome atualizado
-      image:
-        "https://static.itdg.com.br/images/360-240/8fed8f60d3c8e3990396e2478cbc7f2a/shutterstock-1905617575-1-.jpg",
-      description: "Mousse aerado de maracujá feito com a própria fruta.",
-      price: 8.0,
-    },
-    {
-      id: "12",
-      name: "Brownie com Sorvete", // Nome atualizado
-      image:
-        "https://vovopalmirinha.com.br/wp-content/uploads/2020/01/vovo-palmirinha-brownie.jpg",
-      description: "Brownie quente de chocolate com uma bola de sorvete de baunilha.",
-      price: 16.0,
-    },
-    {
-      id: "25",
-      name: "Taça de Açaí Power", // Novo item
-      image:
-        "https://st2.depositphotos.com/1000300/11835/i/450/depositphotos_118356392-stock-photo-acai-bowl.jpg",
-      description: "Açaí com granola, leite em pó, morangos e banana.",
-      price: 19.0,
-    },
-    {
-      id: "26",
-      name: "Mini Churros com Doce de Leite", // Novo item
-      image:
-        "https://img.freepik.com/fotos-premium/churros-espanhois-com-molho-de-caramelo_662214-36.jpg",
-      description: "Churros crocantes cobertos com açúcar e canela, servidos com doce de leite.",
-      price: 14.0,
-    },
-    // NOVOS ITENS DE SOBREMESAS
-    {
-      id: "32",
-      name: "Banoffe Pie",
-      image:
-        "https://st4.depositphotos.com/1000300/21575/i/450/depositphotos_215757752-stock-photo-pastel-frito-fried-brazilian-pastry.jpg", // Imagem placeholder
-      description: "Torta inglesa de banana, toffee e chantilly.",
-      price: 18.0,
-    },
-    {
-      id: "33",
-      name: "Salada de Frutas",
-      image:
-        "https://img.freepik.com/fotos-premium/salada-de-frutas-frescas-em-uma-tigela-de-vidro_12345-6789.jpg", // Imagem placeholder
-      description: "Mix de frutas frescas da estação, leve e refrescante.",
-      price: 12.0,
-    },
-    {
-      id: "34",
-      name: "Tiramisu Clássico",
-      image:
-        "https://st3.depositphotos.com/1000676/12839/i/450/depositphotos_128394464-stock-photo-carrot-cake-slice.jpg", // Imagem placeholder
-      description: "Clássica sobremesa italiana com café, biscoito e mascarpone.",
-      price: 21.0,
-    },
-  ],
-  Bebidas: [
-    {
-      id: "13",
-      name: "Água Mineral (500ml)", // Nome atualizado
-      image:
-        "https://mir-s3-cdn-cf.behance.net/project_modules/fs/933b37104527701.5f6a377a3ad51.jpg",
-      description: "Água com gás ou sem gás.",
-      price: 6.0,
-    },
-    {
-      id: "14",
-      name: "Milk Shake de Morango", // Nome atualizado
-      image:
-        "https://t4.ftcdn.net/jpg/02/33/00/19/360_F_233001977_ylLHVj9o2HAoEab4zzM6Kirms6I0XBCM.jpg",
-      description: "Milk shake cremoso de morango.",
-      price: 12.6,
-    },
-    {
-      id: "15",
-      name: "Refrigerante Lata", // Nome atualizado
-      image:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRhJCK-niB8nDkIxQcSNv9B1FuvP0oAU51n4A&s",
-      description: "Refrigerantes variados (Coca, Guaraná, Soda).",
-      price: 7.5,
-    },
-    {
-      id: "16",
-      name: "Suco Natural de Laranja", // Nome atualizado
-      image:
-        "https://thumbs.dreamstime.com/b/vidros-com-sucos-org%C3%A2nicos-frescos-do-vegetal-e-de-fruto-60371647.jpg",
-      description: "Sucos naturais de laranja ou abacaxi.",
-      price: 10.0,
-    },
-    {
-      id: "27",
-      name: "Café Expresso", // Novo item
-      image:
-        "https://st3.depositphotos.com/1000676/12711/i/450/depositphotos_127112048-stock-photo-cup-of-hot-espresso-coffee.jpg",
-      description: "Dose simples de café expresso, forte e quente.",
-      price: 5.0,
-    },
-    {
-      id: "28",
-      name: "Limonada Suíça", // Novo item
-      image:
-        "https://img.freepik.com/fotos-premium/limonada-suica-refrescante-com-cubos-de-gelo-e-hortela_662214-36.jpg",
-      description: "Refrescante limonada batida com casca e leite condensado.",
-      price: 9.0,
-    },
-    // NOVOS ITENS DE BEBIDAS
-    {
-      id: "35",
-      name: "Chá Gelado de Pêssego",
-      image:
-        "https://st4.depositphotos.com/1000300/21575/i/450/depositphotos_215757752-stock-photo-pastel-frito-fried-brazilian-pastry.jpg", // Imagem placeholder
-      description: "Chá preto gelado com sabor natural de pêssego e gelo.",
-      price: 8.0,
-    },
-    {
-      id: "36",
-      name: "Chocolate Quente Cremoso",
-      image:
-        "https://st3.depositphotos.com/1000676/12711/i/450/depositphotos_127112048-stock-photo-cup-of-hot-espresso-coffee.jpg", // Imagem placeholder
-      description: "Chocolate cremoso e quente, perfeito para dias frios.",
-      price: 11.0,
-    },
-    {
-      id: "37",
-      name: "Água de Coco Natural",
-      image:
-        "https://img.freepik.com/fotos-premium/agua-de-coco-fresca-em-copo_12345-6789.jpg", // Imagem placeholder
-      description: "Água de coco natural gelada.",
-      price: 9.5,
-    },
-  ],
-};
-
-// Função auxiliar para renderizar a logo, aceitando o estilo
-const renderLogo = (logoStyle: any) => (
-    <Image source={logoImage} style={logoStyle} />
-);
 
 export default function App(): JSX.Element {
   const { width } = useWindowDimensions();
-  
-  // Destructuring styles and scale from the memoized result
-  const { styles, scale, primaryColor } = useMemo(() => createStyles(width), [width]); 
-
   const [cart, setCart] = useState<CartItem[]>([]); 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(
-    "Lanches",
-  );
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
-
-  const [isRegistered, setIsRegistered] = useState<boolean>(false);
-  const [name, setName] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  // Estado para rastrear o campo de input focado (UX: feedback visual)
-  const [focusedInput, setFocusedInput] = useState<string | null>(null); 
+  const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isCartModalVisible, setIsCartModalVisible] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   
-  const [isPaymentScreen, setIsPaymentScreen] = useState<boolean>(false);
-  const [isConfirmationScreen, setIsConfirmationScreen] =
-    useState<boolean>(false);
-  
-  // ESTADOS PARA PAGAMENTO
-  const [paymentMethod, setPaymentMethod] = useState<string>(""); // Método final (ex: Dinheiro (Troco para R$ 50,00))
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(""); // Seleção temporária na tela de pagamento
-  const [changeFor, setChangeFor] = useState<string>(""); // Valor para troco (se aplicável)
-  const [isExactAmount, setIsExactAmount] = useState<boolean>(false); // NOVIDADE: Indica se é valor exato
-  
-  const [orderPlaced, setOrderPlaced] = useState<boolean>(false);
+  // Estados de Fluxo
+  const [isLoading, setIsLoading] = useState(true);
+  const [orderStatus, setOrderStatus] = useState<'browsing' | 'preparing'>('browsing');
+  const [prepStep, setPrepStep] = useState(0); // 0: Recebido, 1: Cozinha, 2: Entrega
 
-  // Funções de Navegação de Retorno (UX: Escapismo)
-  const handleBackToMenu = () => {
-    setIsPaymentScreen(false);
-    // Limpar estados temporários ao voltar
-    setSelectedPaymentMethod(""); 
-    setChangeFor("");
-    setIsExactAmount(false); // Limpar estado de troco
-  };
-  
-  const handleBackToPayment = () => {
-    setIsConfirmationScreen(false);
-    setIsPaymentScreen(true);
-  };
-  
+  // Estados de Feedback
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [isCartBouncing, setIsCartBouncing] = useState(false);
 
-  // Lógica de filtragem de itens
-  const filteredItems = useMemo(() => {
-    if (!selectedCategory) return [];
+  const DELIVERY_FEE = 5.00;
+  const { styles, scale, fontScale } = useMemo(() => createStyles(width), [width]); 
 
-    const items = categorizedMenuItems[selectedCategory] || [];
-    
-    // Se não houver termo de busca, retorna todos os itens da categoria
-    if (!searchTerm.trim()) return items;
+  // Splash Screen
+  useEffect(() => {
+    setTimeout(() => setIsLoading(false), 2500);
+  }, []);
 
-    const lowerCaseSearch = searchTerm.trim().toLowerCase();
-    
-    // Filtra itens cujo nome ou descrição contenha o termo de busca
-    return items.filter(item => 
-        item.name.toLowerCase().includes(lowerCaseSearch) ||
-        item.description?.toLowerCase().includes(lowerCaseSearch)
-    );
-  }, [selectedCategory, searchTerm]); 
-  
+  // Simulação de Progresso do Pedido (Passo 3)
+  useEffect(() => {
+    if (orderStatus === 'preparing') {
+      const interval = setInterval(() => {
+        setPrepStep((prev) => (prev < 2 ? prev + 1 : prev));
+      }, 5000); // Muda o status a cada 5 segundos para demonstração
+      return () => clearInterval(interval);
+    }
+  }, [orderStatus]);
 
-  // Adiciona ou Incrementa a Quantidade
   const addToCart = (item: MenuItem) => {
+    setLastAddedId(item.id);
+    setTimeout(() => setLastAddedId(null), 1500);
+    setIsCartBouncing(true);
+    setTimeout(() => setIsCartBouncing(false), 300);
+
     setCart((prev) => {
-      const existingItem = prev.find((cartItem) => cartItem.item.id === item.id);
-      if (existingItem) {
-        return prev.map((cartItem) =>
-          cartItem.item.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
-        );
+      const existing = prev.find((i) => i.item.id === item.id);
+      if (existing) {
+        return prev.map((i) => i.item.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { item, quantity: 1 }];
+      return [...prev, { item, quantity: 1, note: "" }];
     });
-    
-    // Adiciona feedback visual temporário
-    setRecentlyAddedId(item.id);
-    setTimeout(() => {
-        setRecentlyAddedId(null);
-    }, 300); 
   };
 
-  // Funções de ajuste de quantidade
-  const increaseQuantity = (itemId: string) => {
-    setCart((prev) =>
-      prev.map((cartItem) =>
-        cartItem.item.id === itemId
-          ? { ...cartItem, quantity: cartItem.quantity + 1 }
-          : cartItem,
-      ),
-    );
-  };
-
-  const decreaseQuantity = (itemId: string) => {
-    setCart((prev) =>
-      prev
-        .map((cartItem) =>
-          cartItem.item.id === itemId
-            ? { ...cartItem, quantity: cartItem.quantity - 1 }
-            : cartItem,
-        )
-        .filter((cartItem) => cartItem.quantity > 0), 
-    );
-  };
-  
-  // Cálculo de totais
-  const calculateTotalItems = (): number => {
-    return cart.reduce((sum, cartItem) => sum + cartItem.quantity, 0);
-  };
-
-  const calculateTotal = (): string => {
-    return cart.reduce((sum, cartItem) => sum + cartItem.item.price * cartItem.quantity, 0).toFixed(2);
-  };
-
-  const handleRegister = () => {
-    // Validação básica para o telefone (ex: 8 dígitos mínimos)
-    if (name.trim() && phone.trim().length >= 8 && email.trim()) {
-      setIsRegistered(true);
-    } else {
-      Alert.alert(
-        "Atenção",
-        "Por favor, preencha seu Nome, Email e um Telefone válido (mínimo 8 dígitos) para continuar.",
-      );
-    }
-  };
-
-  const handleFinalizeOrder = () => {
-    if (cart.length === 0) {
-      Alert.alert(
-        "Carrinho Vazio",
-        "Adicione itens ao carrinho antes de finalizar o pedido.",
-      );
+  const handleFinishOrder = () => {
+    if (!paymentMethod) {
+      Alert.alert("Quase lá!", "Selecione uma forma de pagamento.");
       return;
     }
-    setIsPaymentScreen(true);
+    setIsCartModalVisible(false);
+    setOrderStatus('preparing');
   };
 
-  // Confirma a seleção de pagamento e lida com a lógica do Troco
-  const handleProceedToConfirmation = () => {
-    if (!selectedPaymentMethod) {
-      Alert.alert("Atenção", "Selecione um método de pagamento para continuar.");
-      return;
-    }
+  const subtotal = cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
+  const totalWithDelivery = subtotal > 0 ? subtotal + DELIVERY_FEE : 0;
+  const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-    let finalPaymentMethod = selectedPaymentMethod;
-    
-    // Lógica do Troco
-    if (selectedPaymentMethod === "Dinheiro") {
-      if (isExactAmount) {
-          finalPaymentMethod = "Dinheiro (Valor exato)";
-      } else if (!changeFor || changeFor.trim() === '') {
-          // Se o usuário não marcou "Valor Exato" mas deixou o campo em branco, assumimos valor exato
-          finalPaymentMethod = "Dinheiro (Valor exato)"; 
-      } else {
-          const total = parseFloat(calculateTotal());
-          // Substitui vírgula por ponto para o parseFloat
-          const changeAmount = parseFloat(changeFor.replace(',', '.'));
-          
-          if (isNaN(changeAmount) || changeAmount < total) {
-             Alert.alert(
-                "Valor Insuficiente",
-                `O valor para troco (R$ ${changeFor}) deve ser igual ou maior que o total do pedido (R$ ${calculateTotal()}).`,
-             );
-             return;
-          }
-          // Troco para: R$ 50,00
-          finalPaymentMethod = `Dinheiro (Troco para R$ ${changeFor})`;
-      }
-    }
+  // Sugestões do Chef (Passo 1): Filtra itens com preço > 30 ou categoria específica
+  const chefSuggestions = useMemo(() => {
+    return menuItems.filter(item => item.price > 25).slice(0, 3);
+  }, []);
 
-    setPaymentMethod(finalPaymentMethod);
-    setSelectedPaymentMethod(""); // Limpa seleção temporária
-    setChangeFor(""); // Limpa valor do troco
-    setIsExactAmount(false); // Limpa valor exato
-    setIsPaymentScreen(false);
-    setIsConfirmationScreen(true);
-  };
+  const filteredItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const matchesCategory = selectedCategory === "Todos" || item.category === selectedCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [selectedCategory, searchTerm]);
 
-  const handlePlaceOrder = () => {
-    setOrderPlaced(true);
-  };
-
-  const resetOrder = () => {
-    setOrderPlaced(false);
-    setIsConfirmationScreen(false);
-    setIsPaymentScreen(false);
-    setCart([]);
-    setSelectedCategory("Lanches");
-    setPaymentMethod("");
-    setSelectedPaymentMethod("");
-  };
-  
-  // Função para formatar o troco no input (ex: 50,00)
-  const formatCurrencyInput = (text: string) => {
-    // Permite apenas dígitos e uma vírgula
-    let cleaned = text.replace(/[^0-9,]/g, "");
-
-    // Garante no máximo uma vírgula
-    let parts = cleaned.split(',');
-    if (parts.length > 2) {
-        cleaned = parts[0] + ',' + parts.slice(1).join('');
-    }
-    
-    // Limita a duas casas decimais após a vírgula
-    if (parts.length === 2 && parts[1].length > 2) {
-        cleaned = parts[0] + ',' + parts[1].substring(0, 2);
-    }
-
-
-    setChangeFor(cleaned);
-  };
-
-  // Função para renderizar o Botão Voltar
-  const renderBackButton = (onPress: () => void) => (
-      <TouchableOpacity onPress={onPress} style={styles.backButton}>
-          <Text style={styles.backButtonText}>⬅️ Voltar</Text>
-      </TouchableOpacity>
-  );
-
-
-  // 1. Pedido Realizado (Fundo Marmorizado) - UX: Gestão de Expectativas
-  if (orderPlaced) {
-    // Extrai o troco se for dinheiro para exibição
-    const isCash = paymentMethod.includes("Dinheiro");
-    const displayPaymentMethod = isCash
-        ? paymentMethod // Ex: Dinheiro (Troco para R$ 50,00)
-        : paymentMethod;
-
+  // TELA DE SPLASH
+  if (isLoading) {
     return (
-      <ImageBackground
-        source={backgroundImage}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.containerTransparent}> 
-          <ScrollView contentContainerStyle={styles.scrollContentCenter}>
-            {renderLogo(styles.logoFull)}
-            <Text style={styles.title}>🎉 Pedido Realizado!</Text>
-            <Text style={styles.text}>Seu pedido foi realizado com sucesso.</Text>
-            
-            {/* Mensagem de Próximos Passos */}
-            <Text style={[styles.text, styles.nextStepsText]}>
-                ⏳ Tempo de preparo e entrega estimado: 30 a 40 minutos.
-            </Text>
-            
-            <View style={styles.summaryContainer}>
-              <Text style={styles.totalText}>
-                Total Pago: R$ {calculateTotal()}
-              </Text>
-              <Text style={styles.paymentText}>Método: {displayPaymentMethod}</Text>
-              
-              {isCash && paymentMethod.includes("Troco") && (
-                  <Text style={styles.changeText}>
-                      Aguarde seu troco na entrega!
-                  </Text>
-              )}
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.finalizeButton, { marginTop: Math.round(30 * scale) }]}
-              onPress={resetOrder}
-            >
-              <Text style={styles.finalizeButtonText}>Voltar para o Menu</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
-    );
-  }
-
-  // 2. Cadastro (Fundo Marmorizado) - UX: Feedback de Input
-  if (!isRegistered) {
-    return (
-      <ImageBackground
-        source={backgroundImage}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.containerTransparent}>
-          <View style={styles.centeredFormWrapper}> 
-            {renderLogo(styles.logoFull)}
-            <Text style={styles.title}>🍔 Lanchonete On-line</Text>
-            <Text style={styles.subtitle}>👋 Bem-vindo! Faça seu Cadastro</Text>
-            
-            <TextInput
-              style={[
-                styles.input,
-                focusedInput === 'name' && { borderColor: primaryColor }
-              ]}
-              placeholder="Nome Completo"
-              value={name}
-              onChangeText={setName}
-              placeholderTextColor="#999"
-              onFocus={() => setFocusedInput('name')}
-              onBlur={() => setFocusedInput(null)}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                focusedInput === 'phone' && { borderColor: primaryColor }
-              ]}
-              placeholder="Telefone (mínimo 8 dígitos)"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-              placeholderTextColor="#999"
-              maxLength={15} // UX: Limite prático para números de telefone
-              onFocus={() => setFocusedInput('phone')}
-              onBlur={() => setFocusedInput(null)}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                focusedInput === 'email' && { borderColor: primaryColor }
-              ]}
-              placeholder="E-mail"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              onFocus={() => setFocusedInput('email')}
-              onBlur={() => setFocusedInput(null)}
-            />
-            <TouchableOpacity
-              style={styles.finalizeButton}
-              onPress={handleRegister}
-            >
-              <Text style={styles.finalizeButtonText}>Avançar</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
-    );
-  }
-
-  // 3. Seleção de Pagamento (Fundo Marmorizado) - UX: Botão Voltar + Troco + Total
-  if (isPaymentScreen) {
-    
-    return (
-      <ImageBackground
-        source={backgroundImage}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.containerTransparent}>
-          {/* Botão Voltar para o Cardápio */}
-          {renderBackButton(handleBackToMenu)}
-          
-          <ScrollView contentContainerStyle={styles.scrollContentCenter}>
-            {renderLogo(styles.logoFull)}
-            <Text style={styles.title}>💳 Método de Pagamento</Text>
-            
-            {/* Destaque do Total */}
-            <View style={[styles.summaryContainer, styles.totalBoxPayment]}>
-                <Text style={styles.cartItemCount}>Total a Pagar:</Text>
-                <Text style={styles.totalTextLarge}>R$ {calculateTotal()}</Text>
-            </View>
-            
-            <Text style={styles.subtitleSmall}>Selecione uma opção:</Text>
-            
-            <View style={styles.paymentButtonContainer}>
-              {paymentOptions.map(option => (
-                <TouchableOpacity
-                    key={option.method}
-                    style={[
-                        styles.paymentButton,
-                        selectedPaymentMethod === option.method && styles.paymentButtonSelected,
-                    ]}
-                    onPress={() => {
-                        setSelectedPaymentMethod(option.method);
-                        setChangeFor(""); // Limpa troco ao mudar
-                        setIsExactAmount(option.method !== "Dinheiro"); // Assume exato para não-dinheiro
-                    }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.paymentIcon}>{option.icon}</Text>
-                    <Text style={styles.paymentButtonText}>{option.name}</Text>
-                  </View>
-                  {selectedPaymentMethod === option.method && (
-                      <Text style={styles.selectionCheck}>✔️</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* Lógica do Troco para Dinheiro */}
-            {selectedPaymentMethod === "Dinheiro" && (
-                <View style={styles.changeInputContainer}>
-                    <Text style={styles.changeInputLabel}>
-                        Você precisa de troco?
-                    </Text>
-                    
-                    {/* Botão de Valor Exato */}
-                    <TouchableOpacity
-                        style={[
-                            styles.exactAmountButton,
-                            isExactAmount && styles.exactAmountButtonSelected
-                        ]}
-                        onPress={() => {
-                            setIsExactAmount(!isExactAmount);
-                            setChangeFor(""); // Zera o input ao marcar/desmarcar
-                        }}
-                    >
-                        <Text style={styles.exactAmountButtonText}>
-                           {isExactAmount ? '✅ Valor Exato (Não preciso de troco)' : '⬜ Valor Exato (Não preciso de troco)'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Input de Troco Condicional */}
-                    {!isExactAmount && (
-                        <View style={{ marginTop: Math.round(15 * scale) }}>
-                            <Text style={styles.changeSubLabel}>
-                                Informe para qual valor deseja troco (R$):
-                            </Text>
-                            <TextInput
-                                style={[
-                                    styles.input, 
-                                    { width: "100%", textAlign: 'center', fontWeight: 'bold' }
-                                ]}
-                                placeholder={`Ex: ${Math.max(10, Math.ceil(parseFloat(calculateTotal())/10)*10).toFixed(2).replace('.', ',')}`}
-                                keyboardType="numeric"
-                                value={changeFor}
-                                onChangeText={(text) => {
-                                    formatCurrencyInput(text);
-                                }}
-                                placeholderTextColor="#AAA"
-                                onFocus={() => setFocusedInput('change')}
-                                onBlur={() => setFocusedInput(null)}
-                            />
-                        </View>
-                    )}
-                </View>
-            )}
-            
-            {/* Botão Avançar, aparece se um método estiver selecionado */}
-            {selectedPaymentMethod && (
-                <TouchableOpacity
-                    style={styles.finalizeButton}
-                    onPress={handleProceedToConfirmation}
-                >
-                    <Text style={styles.finalizeButtonText}>Avançar para Confirmação</Text>
-                </TouchableOpacity>
-            )}
-            
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
-    );
-  }
-
-  // 4. Confirmação do Pedido (Fundo Marmorizado) - UX: Detalhes do Cliente + Botão Voltar
-  if (isConfirmationScreen) {
-    // Extrai o troco se for dinheiro para exibição
-    const isCash = paymentMethod.includes("Dinheiro");
-    const displayPaymentMethod = isCash
-        ? paymentMethod // Ex: Dinheiro (Troco para R$ 50,00)
-        : paymentMethod;
-
-    return (
-      <ImageBackground
-        source={backgroundImage}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.containerTransparent}>
-            {/* Botão Voltar para a Seleção de Pagamento */}
-            {renderBackButton(handleBackToPayment)}
-            
-          <ScrollView contentContainerStyle={styles.scrollContentCenter}>
-            {renderLogo(styles.logoFull)}
-            <Text style={styles.title}>📝 Resumo e Confirmação</Text>
-            
-            {/* Container de Dados do Cliente */}
-            <View style={[styles.summaryContainer, styles.customerDetailsContainer]}>
-                <Text style={styles.customerDetailTitle}>Detalhes do Cliente:</Text>
-                <Text style={styles.customerDetailText}>👤 {name}</Text>
-                <Text style={styles.customerDetailText}>📞 {phone}</Text>
-                <Text style={styles.customerDetailText}>📧 {email}</Text>
-            </View>
-            
-            {/* Resumo do Pedido (Total, Pagamento, Itens) */}
-            <View style={[styles.summaryContainer, { marginBottom: Math.round(15 * scale) }]}>
-              <Text style={styles.cartItemCount}>Itens: {calculateTotalItems()}</Text>
-              <Text style={styles.paymentText}>Pagamento: {displayPaymentMethod}</Text>
-              <Text style={styles.totalText}>Total: R$ {calculateTotal()}</Text>
-            </View>
-
-            {/* Lista de Itens do Carrinho com Controle de Quantidade */}
-            {cart.length > 0 ? (
-                cart.map((cartItem) => (
-                    <View
-                        key={cartItem.item.id}
-                        style={styles.confirmationItemContainer}
-                    >
-                        <Image
-                            source={{ uri: cartItem.item.image }}
-                            style={styles.confirmationImage}
-                        />
-                        <View style={styles.itemDetails}>
-                            <Text style={styles.itemTitleConfirmation} numberOfLines={1}>
-                                {cartItem.item.name}
-                            </Text>
-                            <Text style={styles.itemPriceText}>
-                                R$ {(cartItem.item.price * cartItem.quantity).toFixed(2)}
-                            </Text>
-                        </View>
-                        
-                        <View style={styles.quantityControl}>
-                            <TouchableOpacity 
-                                style={styles.quantityButton}
-                                onPress={() => decreaseQuantity(cartItem.item.id)}
-                            >
-                                <Text style={styles.quantityButtonText}>-</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.quantityText}>{cartItem.quantity}</Text>
-                            <TouchableOpacity 
-                                style={styles.quantityButton}
-                                onPress={() => increaseQuantity(cartItem.item.id)}
-                            >
-                                <Text style={styles.quantityButtonText}>+</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ))
-            ) : (
-                <Text style={styles.emptyCartText}>Carrinho vazio</Text>
-            )}
-            
-            <TouchableOpacity
-                style={styles.finalizeButton}
-                onPress={handlePlaceOrder}
-            >
-                <Text style={styles.finalizeButtonText}>✅ Efetuar Pedido</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
-    );
-  }
-
-  // 5. Tela Principal (Cardápio)
-  return (
-    <SafeAreaView style={styles.containerMenu}>
-      {/* Container do Header e Categorias (Fixo na parte superior) */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerInfo}> 
-            <View style={styles.headerTitleGroup}>
-                {renderLogo(styles.logoHeader)}
-                <View style={{marginLeft: Math.round(12 * scale)}}> 
-                  <Text style={styles.titleMenu}>🍔 Cardápio</Text>
-                  <Text style={styles.cartBadgeMenu}>
-                    Sua Lanchonete Online
-                  </Text>
-                </View>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.cartBadgeMenu}>
-                    🛒 {calculateTotalItems()} itens
-                </Text>
-                <Text style={styles.totalTextHeader}> 
-                    R$ {calculateTotal()}
-                </Text>
-            </View>
-        </View>
-
-        {/* Barra de pesquisa abaixo do header principal */}
-        <View style={styles.searchBarContainer}>
-            <TextInput
-                style={styles.searchInput}
-                placeholder="🔍 Buscar lanches, bebidas..."
-                placeholderTextColor="#999"
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-            />
-        </View>
-
-        <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.categoryScrollContainer}
-        >
-          {Object.keys(categorizedMenuItems).map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryButton,
-                selectedCategory === category && styles.categoryButtonActive,
-              ]}
-              onPress={() => {
-                  setSelectedCategory(category);
-                  setSearchTerm(""); // Limpa a busca ao mudar de categoria
-              }}
-            >
-              <Text
-                style={[
-                  styles.categoryButtonText,
-                  selectedCategory === category &&
-                    styles.categoryButtonTextActive,
-                ]}
-              >
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      <View style={styles.splashContainer}>
+        <Image source={logoImage} style={styles.splashLogo} />
+        <Text style={styles.splashTitle}>Lanchonete Online</Text>
+        <ActivityIndicator size="large" color="#fff" style={{ marginTop: 20 }} />
       </View>
+    );
+  }
 
-      {/* Container Rolável dos Itens */}
-      <ScrollView style={styles.menuScroll} contentContainerStyle={styles.menuScrollContent}>
-        
-        {/* Usando filteredItems e ajustando o título */}
-        {selectedCategory && (
-          <View>
-            <Text style={styles.categoryTitle}>
-              {searchTerm.trim() ? `Resultados para "${searchTerm}"` : selectedCategory}
-            </Text>
+  // TELA DE STATUS DO PEDIDO (Passo 3)
+  if (orderStatus === 'preparing') {
+    return (
+      <SafeAreaView style={styles.statusContainer}>
+        <View style={styles.statusHeader}>
+          <Text style={styles.statusTitle}>Pedido em Andamento</Text>
+          <Text style={styles.statusSubtitle}>Acompanhe o seu lanche</Text>
+        </View>
 
-            <View style={styles.menuGridContainer}>
-              {filteredItems.map((item) => (
-                <View 
-                    key={item.id} 
-                    style={[
-                        styles.itemContainer,
-                        recentlyAddedId === item.id && styles.itemContainerAdded
-                    ]}
+        <View style={styles.progressTracker}>
+          {[
+            { label: 'Confirmado', icon: '✅' },
+            { label: 'Na Cozinha', icon: '👨‍🍳' },
+            { label: 'Saiu para Entrega', icon: '🛵' }
+          ].map((step, index) => (
+            <View key={index} style={styles.stepContainer}>
+              <View style={[styles.stepCircle, prepStep >= index && styles.stepCircleActive]}>
+                <Text>{step.icon}</Text>
+              </View>
+              <Text style={[styles.stepLabel, prepStep >= index && styles.stepLabelActive]}>{step.label}</Text>
+              {index < 2 && <View style={[styles.stepLine, prepStep > index && styles.stepLineActive]} />}
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.orderSummaryCard}>
+          <Text style={styles.cardTitle}>Resumo do seu Pedido</Text>
+          {cart.map(item => (
+            <Text key={item.item.id} style={styles.orderSummaryText}>• {item.quantity}x {item.item.name}</Text>
+          ))}
+          <Text style={styles.orderSummaryTotal}>Total Pago: R$ {totalWithDelivery.toFixed(2)}</Text>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {setOrderStatus('browsing'); setCart([]); setPrepStep(0);}}
+        >
+          <Text style={styles.backButtonText}>Fazer Novo Pedido</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <ImageBackground source={backgroundImage} style={styles.backgroundImage}>
+      <SafeAreaView style={styles.containerTransparent}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={[styles.cartHeaderBtn, isCartBouncing && { transform: [{ scale: 1.3 }] }]} 
+              onPress={() => setIsCartModalVisible(true)}
+            >
+              <Text style={{ fontSize: 22 * scale }}>🛒</Text>
+              {cartCount > 0 && (
+                <View style={styles.cartHeaderBadge}>
+                  <Text style={styles.cartHeaderBadgeText}>{cartCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <Image source={logoImage} style={styles.logo} />
+            <Text style={styles.title}>Lanchonete Online</Text>
+          </View>
+
+          {/* SUGESTÕES DO CHEF (Passo 1) */}
+          <View style={styles.suggestionsSection}>
+            <Text style={styles.sectionTitle}>⭐ Sugestões do Chef</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
+              {chefSuggestions.map((item) => (
+                <TouchableOpacity key={item.id} style={styles.suggestionCard} onPress={() => addToCart(item)}>
+                  <Image source={{ uri: item.image }} style={styles.suggestionImage} />
+                  <View style={styles.suggestionInfo}>
+                    <Text style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.suggestionPrice}>R$ {item.price.toFixed(2)}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Encontre seu lanche preferido..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesList}>
+            {categories.map((cat) => (
+              <TouchableOpacity 
+                key={cat} 
+                onPress={() => setSelectedCategory(cat)}
+                style={[styles.categoryBtn, selectedCategory === cat && styles.categoryBtnActive]}
+              >
+                <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.menuGrid}>
+            {filteredItems.map((item) => (
+              <View key={item.id} style={styles.productCard}>
+                <Image source={{ uri: item.image }} style={styles.productImage} />
+                <Text style={styles.productName}>{item.name}</Text>
+                <Text style={styles.productPrice}>R$ {item.price.toFixed(2)}</Text>
+                <TouchableOpacity 
+                  style={[styles.addBtn, lastAddedId === item.id && { backgroundColor: '#28A745' }]} 
+                  onPress={() => addToCart(item)}
                 >
-                  <Image source={{ uri: item.image }} style={styles.image} /> 
-                  
-                  <View style={styles.itemInfoGroup}>
-                    <View style={styles.itemTextContainer}>
-                        <Text style={styles.itemTitle}>{item.name}</Text>
-                        <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>
+                  <Text style={styles.addBtnText}>{lastAddedId === item.id ? "✓ Pronto" : "Adicionar"}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+
+        {cart.length > 0 && (
+          <TouchableOpacity style={styles.floatingCartBtn} onPress={() => setIsCartModalVisible(true)}>
+            <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cartCount}</Text></View>
+            <Text style={styles.floatingCartText}>Finalizar Agora</Text>
+            <Text style={styles.floatingCartTotal}>R$ {totalWithDelivery.toFixed(2)}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* MODAL CARRINHO (Mantido conforme anterior) */}
+        <Modal animationType="slide" transparent={true} visible={isCartModalVisible}>
+           <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Meu Carrinho</Text>
+                <TouchableOpacity onPress={() => setIsCartModalVisible(false)}><Text style={styles.closeBtn}>✕</Text></TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {cart.map((cartItem) => (
+                  <View key={cartItem.item.id} style={styles.cartItemContainer}>
+                    <View style={styles.cartItemRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cartItemName}>{cartItem.item.name}</Text>
+                        <Text style={styles.cartItemPrice}>R$ {cartItem.item.price.toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => {/* logic */}}><Text>-</Text></TouchableOpacity>
+                        <Text style={styles.qtyText}>{cartItem.quantity}</Text>
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => addToCart(cartItem.item)}><Text>+</Text></TouchableOpacity>
+                      </View>
                     </View>
-                  
-                    <View style={styles.itemBottomRow}>
-                        
-                        <Text style={styles.itemPriceMain}>
-                            R$ {item.price.toFixed(2)}
-                        </Text>
-                        
-                        <TouchableOpacity
-                            style={styles.addButton} 
-                            onPress={() => addToCart(item)}
-                        >
-                            <Text style={styles.addButtonText}>➕</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <TextInput style={styles.noteInput} placeholder="Observações..." value={cartItem.note} onChangeText={(text) => {}} />
+                  </View>
+                ))}
+                <View style={styles.paymentContainer}>
+                  <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Forma de Pagamento:</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {['Pix', 'Cartão', 'Dinheiro'].map(m => (
+                      <TouchableOpacity key={m} onPress={() => setPaymentMethod(m)} style={[styles.paymentOption, paymentMethod === m && styles.paymentOptionActive]}>
+                        <Text style={{color: paymentMethod === m ? '#28A745' : '#333'}}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 </View>
-              ))}
-              
-              {/* Feedback se a busca não encontrar resultados */}
-              {filteredItems.length === 0 && searchTerm.trim() && (
-                  <Text style={styles.emptySearchText}>
-                      Nenhum resultado encontrado para "{searchTerm}".
-                  </Text>
-              )}
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <Text style={styles.totalValueModal}>Total: R$ {totalWithDelivery.toFixed(2)}</Text>
+                <TouchableOpacity style={styles.checkoutBtn} onPress={handleFinishOrder}>
+                  <Text style={styles.checkoutBtnText}>Confirmar Pedido</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        )}
-      </ScrollView>
-
-      {/* Botão de Finalizar Fixo na Base (Cor Verde Sucesso) */}
-      {cart.length > 0 && (
-          <TouchableOpacity
-            style={styles.finalizeButtonFixed}
-            onPress={handleFinalizeOrder}
-          >
-            <Text style={styles.finalizeButtonText}>🛍️ Finalizar Pedido (R$ {calculateTotal()})</Text>
-          </TouchableOpacity>
-      )}
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
-/**
- * Cria styles responsivos baseado na largura, com cores e tamanhos ajustados.
- * Retorna um objeto contendo os estilos criados e o fator de escala.
- */
 function createStyles(width: number) {
-  // --- DEFINIÇÕES DE RESPONSIVIDADE ---
-  const baseWidth = 375;
-  const scale = Math.max(0.85, Math.min(1.2, width / baseWidth));
-  const isExtraLargeScreen = width >= 1000; 
-  const maxWidth = 900; 
-  const contentMaxWidth = 500; 
-  const horizontalPadding = Math.round(16 * scale); 
+  const scale = width / 375;
+  const itemsPerRow = width > 600 ? 3 : 2;
+  const gap = 15;
+  const cardWidth = (width - 40 - (gap * (itemsPerRow - 1))) / itemsPerRow;
 
-  const logoHeaderSize = width >= 900 ? 80 : width >= 600 ? 70 : 60; 
-  const logoFullSize = width >= 900 ? 180 : width >= 600 ? 140 : 100; 
+  return {
+    scale,
+    styles: StyleSheet.create({
+      splashContainer: { flex: 1, backgroundColor: '#0A2342', justifyContent: 'center', alignItems: 'center' },
+      splashLogo: { width: 120, height: 120, borderRadius: 60 },
+      splashTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20 },
+      
+      backgroundImage: { flex: 1 },
+      containerTransparent: { flex: 1, backgroundColor: 'rgba(255,255,255,0.92)' },
+      scrollContent: { paddingBottom: 100 },
+      header: { alignItems: 'center', paddingVertical: 40, backgroundColor: '#0A2342', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+      cartHeaderBtn: { position: 'absolute', right: 25, top: 25 },
+      cartHeaderBadge: { position: 'absolute', right: -5, top: -5, backgroundColor: '#28A745', borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+      cartHeaderBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+      logo: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: '#fff' },
+      title: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 10 },
 
-  const itemWidth = width >= 900 ? "32%" : width >= 600 ? "48%" : "100%";
-  const marginVertical = itemWidth === '100%' ? Math.round(10 * scale) : Math.round(8 * scale);
+      // Sugestões (Passo 1)
+      suggestionsSection: { marginVertical: 20 },
+      sectionTitle: { fontSize: 18, fontWeight: 'bold', marginLeft: 20, marginBottom: 15, color: '#0A2342' },
+      suggestionCard: { width: 160, backgroundColor: '#fff', borderRadius: 15, marginRight: 15, elevation: 4, overflow: 'hidden' },
+      suggestionImage: { width: '100%', height: 100 },
+      suggestionInfo: { padding: 10 },
+      suggestionName: { fontWeight: 'bold', fontSize: 14 },
+      suggestionPrice: { color: '#28A745', fontWeight: 'bold' },
 
+      searchContainer: { paddingHorizontal: 20, marginTop: -20 },
+      searchInput: { backgroundColor: '#fff', padding: 12, borderRadius: 15, elevation: 5 },
+      categoriesList: { marginVertical: 20, paddingLeft: 20 },
+      categoryBtn: { padding: 10, marginRight: 10, borderRadius: 20, backgroundColor: '#eee' },
+      categoryBtnActive: { backgroundColor: '#0A2342' },
+      categoryTextActive: { color: '#fff' },
 
-  // --- CORES NOVAS E ATUALIZADAS (Mais profissionais/modernas) ---
-  const primaryColor = "#FF6C00"; // Laranja Sólido (Marca)
-  const successColor = "#4CAF50"; // Verde (Ação Principal/Finalizar)
-  const textColor = "#111"; // Preto mais forte para melhor contraste
-  const secondaryTextColor = "#666"; // Cinza para descrições
-  const whiteColor = "#fff";
-  const lightBackgroundColor = "#FFFFFF"; // Fundo branco puro
-  const superLightGray = "#F0F2F5"; // Cinza muito sutil para backgrounds de elementos
-  const baseTransparentBackground = "rgba(0,0,0,0.35)"; // Escurecido para melhor contraste do texto
+      menuGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20 },
+      productCard: { width: cardWidth, backgroundColor: '#fff', borderRadius: 15, padding: 10, marginBottom: gap, marginRight: gap/2, elevation: 3 },
+      productImage: { width: '100%', height: cardWidth * 0.8, borderRadius: 10 },
+      productName: { fontWeight: 'bold', marginTop: 5, height: 35 },
+      productPrice: { color: '#28A745', fontWeight: 'bold' },
+      addBtn: { backgroundColor: '#0A2342', padding: 8, borderRadius: 10, marginTop: 5, alignItems: 'center' },
+      addBtnText: { color: '#fff', fontWeight: 'bold' },
 
+      // Tela de Status (Passo 3)
+      statusContainer: { flex: 1, backgroundColor: '#F8F9FA', padding: 20 },
+      statusHeader: { alignItems: 'center', marginVertical: 30 },
+      statusTitle: { fontSize: 24, fontWeight: 'bold', color: '#0A2342' },
+      statusSubtitle: { color: '#666' },
+      progressTracker: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 40, paddingHorizontal: 20 },
+      stepContainer: { alignItems: 'center', flex: 1 },
+      stepCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
+      stepCircleActive: { backgroundColor: '#D4EDDA', borderWidth: 2, borderColor: '#28A745' },
+      stepLine: { position: 'absolute', top: 25, left: '50%', width: '100%', height: 4, backgroundColor: '#eee', zIndex: 1 },
+      stepLineActive: { backgroundColor: '#28A745' },
+      stepLabel: { fontSize: 10, marginTop: 10, textAlign: 'center', color: '#999' },
+      stepLabelActive: { color: '#28A745', fontWeight: 'bold' },
+      orderSummaryCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, elevation: 5 },
+      cardTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 15 },
+      orderSummaryText: { color: '#555', marginBottom: 5 },
+      orderSummaryTotal: { borderTopWidth: 1, borderColor: '#eee', marginTop: 15, paddingTop: 15, fontWeight: 'bold', color: '#28A745', fontSize: 18 },
+      backButton: { backgroundColor: '#0A2342', padding: 18, borderRadius: 15, marginTop: 30, alignItems: 'center' },
+      backButtonText: { color: '#fff', fontWeight: 'bold' },
 
-  // --- FONTES ---
-  const smallFont = Math.round(12 * scale);
-  const normalFont = Math.round(14 * scale);
-  const largeFont = Math.round(18 * scale);
-  const titleFont = Math.round(24 * scale);
-  
-  // --- SOFT SHADOW (Sombra unificada e suave para modernidade) ---
-  const softShadow = {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 * scale }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 8 * scale, 
-    elevation: 4, 
+      // Floating Cart
+      floatingCartBtn: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#28A745', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 10 },
+      floatingCartText: { color: '#fff', fontWeight: 'bold' },
+      floatingCartTotal: { color: '#fff', fontWeight: 'bold' },
+      cartBadge: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 8 },
+      cartBadgeText: { color: '#28A745', fontWeight: 'bold' },
+
+      // Modal (Simplified)
+      modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+      modalContent: { backgroundColor: '#fff', height: '80%', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20 },
+      modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+      modalTitle: { fontSize: 20, fontWeight: 'bold' },
+      closeBtn: { fontSize: 24, color: '#999' },
+      cartItemContainer: { borderBottomWidth: 1, borderColor: '#eee', paddingVertical: 10 },
+      cartItemRow: { flexDirection: 'row', justifyContent: 'space-between' },
+      cartItemName: { fontWeight: 'bold' },
+      quantityControls: { flexDirection: 'row', alignItems: 'center' },
+      qtyBtn: { backgroundColor: '#eee', padding: 5, borderRadius: 5, width: 30, alignItems: 'center' },
+      qtyText: { marginHorizontal: 10 },
+      noteInput: { backgroundColor: '#f9f9f9', padding: 8, borderRadius: 10, marginTop: 10, fontSize: 12 },
+      paymentContainer: { marginVertical: 20 },
+      paymentOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 10, alignItems: 'center' },
+      paymentOptionActive: { borderColor: '#28A745', backgroundColor: '#f0fff0' },
+      modalFooter: { borderTopWidth: 1, borderColor: '#eee', paddingTop: 20 },
+      totalValueModal: { fontSize: 24, fontWeight: 'bold', color: '#28A745', textAlign: 'right', marginBottom: 15 },
+      checkoutBtn: { backgroundColor: '#0A2342', padding: 18, borderRadius: 15, alignItems: 'center' },
+      checkoutBtnText: { color: '#fff', fontWeight: 'bold' }
+    })
   };
-
-
-  const styles = StyleSheet.create({
-    // --- ESTILOS GERAIS/BACKGROUNDS ---
-    backgroundImage: {
-      flex: 1,
-      width: "100%",
-      height: "100%",
-    },
-    containerTransparent: {
-        flex: 1,
-        paddingTop: Platform.OS === "ios" ? Math.round(24 * scale) : Math.round(18 * scale),
-        backgroundColor: baseTransparentBackground, 
-        alignItems: "center",
-    },
-    // Estilo do Botão Voltar
-    backButton: {
-        position: 'absolute',
-        top: Platform.OS === "ios" ? Math.round(40 * scale) : Math.round(20 * scale), 
-        left: horizontalPadding,
-        zIndex: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        paddingHorizontal: Math.round(12 * scale),
-        paddingVertical: Math.round(6 * scale),
-        borderRadius: 50,
-        ...softShadow,
-    },
-    backButtonText: {
-        fontSize: normalFont,
-        fontWeight: 'bold',
-        color: textColor,
-    },
-    containerMenu: {
-      flex: 1,
-      backgroundColor: lightBackgroundColor, 
-    },
-    centeredFormWrapper: {
-      width: "100%",
-      maxWidth: contentMaxWidth, 
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: Math.round(20 * scale),
-      paddingHorizontal: horizontalPadding,
-      flex: 1, 
-    },
-    scrollContentCenter: {
-      minHeight: '100%', 
-      width: '100%',
-      maxWidth: contentMaxWidth + (horizontalPadding * 2), 
-      alignItems: "center",
-      paddingVertical: Math.round(20 * scale),
-      paddingHorizontal: horizontalPadding,
-    },
-    
-    // --- LOGO ---
-    logoHeader: {
-        width: logoHeaderSize,
-        height: logoHeaderSize,
-        resizeMode: "contain",
-        borderRadius: Math.round(8 * scale), 
-        marginBottom: 0, 
-    },
-    logoFull: {
-        width: logoFullSize,
-        height: logoFullSize,
-        resizeMode: "contain",
-        borderRadius: Math.round(12 * scale),
-        marginBottom: Math.round(20 * scale), 
-        ...softShadow, 
-    },
-    
-    // --- CADASTRO/INPUTS ---
-    input: {
-        width: "100%", 
-        padding: Math.round(12 * scale),
-        borderWidth: 2, 
-        borderColor: superLightGray, 
-        borderRadius: 8,
-        marginBottom: Math.round(12 * scale),
-        fontSize: normalFont,
-        backgroundColor: whiteColor,
-        ...softShadow, 
-    },
-    
-    // --- HEADER FIXO E CATEGORIAS (Menu) ---
-    headerContainer: {
-        paddingTop: Platform.OS === "ios" ? 0 : Math.round(10 * scale),
-        backgroundColor: whiteColor, 
-        width: "100%",
-        ...softShadow, 
-    },
-    headerInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between', 
-        paddingVertical: Math.round(10 * scale),
-        paddingHorizontal: horizontalPadding, 
-        width: isExtraLargeScreen ? maxWidth : '100%', 
-        alignSelf: 'center',
-    },
-    headerTitleGroup: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'flex-start',
-    },
-    
-    searchBarContainer: {
-        paddingHorizontal: horizontalPadding,
-        paddingVertical: Math.round(8 * scale),
-        backgroundColor: whiteColor,
-        width: isExtraLargeScreen ? maxWidth : '100%',
-        alignSelf: 'center',
-        paddingTop: Math.round(4 * scale),
-    },
-    searchInput: {
-        width: "100%",
-        padding: Math.round(10 * scale),
-        borderRadius: 8,
-        backgroundColor: superLightGray, 
-        fontSize: normalFont,
-        color: textColor,
-    },
-    
-    categoryScrollContainer: {
-        paddingHorizontal: horizontalPadding, 
-        paddingVertical: Math.round(10 * scale),
-    },
-    categoryButton: {
-      backgroundColor: superLightGray, 
-      paddingHorizontal: Math.round(12 * scale),
-      paddingVertical: Math.round(8 * scale), 
-      marginRight: Math.round(8 * scale), 
-      borderRadius: 50, 
-      borderWidth: 0, 
-    },
-    categoryButtonActive: { 
-        backgroundColor: primaryColor,
-        shadowColor: primaryColor,
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 2,
-    },
-    categoryButtonText: { 
-        color: secondaryTextColor, 
-        fontWeight: "bold", 
-        fontSize: smallFont,
-    },
-    categoryButtonTextActive: { 
-        color: whiteColor,
-        fontWeight: "800", 
-    },
-    
-    // --- GRID DE ITENS DO CARDÁPIO ---
-    menuScroll: {
-        flex: 1,
-        width: "100%",
-    },
-    menuScrollContent: {
-        paddingBottom: Math.round(120 * scale),
-        paddingHorizontal: horizontalPadding, 
-        width: isExtraLargeScreen ? maxWidth : '100%', 
-        alignSelf: 'center',
-    },
-    categoryTitle: {
-      fontSize: Math.round(20 * scale),
-      fontWeight: "800", 
-      marginBottom: Math.round(12 * scale),
-      marginTop: Math.round(12 * scale),
-      textAlign: "left",
-      color: textColor, 
-    },
-    menuGridContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-    },
-    itemContainer: {
-      backgroundColor: whiteColor, 
-      padding: Math.round(10 * scale), 
-      borderRadius: 12, 
-      marginVertical: marginVertical, 
-      alignItems: 'flex-start',
-      width: itemWidth, 
-      ...softShadow, 
-      borderWidth: 0,
-      borderColor: 'transparent',
-    },
-    itemContainerAdded: {
-      borderColor: primaryColor, 
-      borderWidth: 2,
-      transform: [{ scale: 1.02 }], 
-    },
-
-    image: { 
-        width: "100%", 
-        height: undefined, 
-        aspectRatio: 16/9, 
-        borderRadius: 8,
-        marginBottom: Math.round(6 * scale), 
-    },
-    
-    itemInfoGroup: {
-        flex: 1,
-        width: "100%",
-    },
-    itemTextContainer: {
-        flex: 1, 
-    },
-    itemTitle: { 
-        fontSize: normalFont + 3, 
-        fontWeight: "800", 
-        marginTop: Math.round(4 * scale), 
-        color: textColor 
-    },
-    itemDescription: { 
-        fontSize: smallFont, 
-        color: secondaryTextColor, 
-        marginTop: Math.round(4 * scale),
-        marginBottom: Math.round(8 * scale), 
-    },
-    
-    itemBottomRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: Math.round(10 * scale),
-        width: '100%',
-    },
-
-    itemPriceMain: {
-      fontSize: largeFont + 2, 
-      fontWeight: "800", 
-      color: primaryColor, 
-    },
-    
-    addButton: {
-      backgroundColor: primaryColor, 
-      padding: Math.round(10 * scale),
-      borderRadius: 8,
-      width: itemWidth === '100%' ? Math.round(100 * scale) : Math.round(40 * scale),
-      alignItems: "center",
-      justifyContent: 'center',
-      shadowColor: primaryColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 3,
-      elevation: 3,
-    },
-    addButtonText: { 
-        color: whiteColor, 
-        fontWeight: "800", 
-        fontSize: largeFont, 
-    },
-    
-    emptySearchText: {
-      fontSize: normalFont,
-      color: secondaryTextColor,
-      textAlign: "center",
-      marginVertical: Math.round(20 * scale),
-      width: '100%',
-      paddingHorizontal: horizontalPadding,
-    },
-    
-    // --- CHECKOUT E CONFIRMAÇÃO ---
-    confirmationItemContainer: {
-      width: "100%", 
-      backgroundColor: whiteColor,
-      padding: Math.round(12 * scale),
-      borderRadius: 12, 
-      marginBottom: Math.round(10 * scale),
-      flexDirection: "row",
-      alignItems: "center",
-      ...softShadow, 
-    },
-    confirmationImage: {
-      width: Math.round(60 * scale),
-      height: Math.round(60 * scale),
-      borderRadius: 8,
-      marginRight: Math.round(10 * scale),
-    },
-    itemDetails: { flex: 1 },
-    
-    itemTitleConfirmation: { 
-        fontSize: normalFont, 
-        fontWeight: "bold", 
-        color: textColor 
-    },
-    
-    quantityControl: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: superLightGray, 
-        borderRadius: 8,
-        marginLeft: Math.round(10 * scale),
-        borderWidth: 0, 
-    },
-    quantityButton: {
-        paddingHorizontal: Math.round(10 * scale),
-        paddingVertical: Math.round(4 * scale),
-    },
-    quantityButtonText: {
-        fontSize: largeFont,
-        fontWeight: 'bold',
-        color: primaryColor,
-    },
-    quantityText: {
-        fontSize: normalFont,
-        fontWeight: 'bold',
-        paddingHorizontal: Math.round(8 * scale),
-        color: textColor,
-        minWidth: Math.round(25 * scale),
-        textAlign: 'center',
-        borderLeftWidth: 0,
-        borderRightWidth: 0,
-    },
-    
-    itemPriceText: {
-        fontSize: normalFont,
-        fontWeight: "bold",
-        color: primaryColor, 
-        marginTop: Math.round(4 * scale),
-    },
-    
-    paymentButtonContainer: { 
-      width: "100%", 
-      maxWidth: contentMaxWidth, 
-      marginTop: Math.round(10 * scale) 
-    },
-    paymentButton: {
-      backgroundColor: whiteColor, // Mudado para branco para destacar a seleção
-      borderWidth: 2,
-      borderColor: superLightGray,
-      padding: Math.round(14 * scale),
-      marginVertical: Math.round(6 * scale),
-      borderRadius: 10, 
-      alignItems: "center",
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      ...softShadow,
-    },
-    paymentButtonSelected: {
-        borderColor: primaryColor, // Borda laranja para a seleção
-        backgroundColor: superLightGray,
-    },
-    paymentButtonText: { 
-        color: textColor, 
-        fontWeight: "bold", 
-        fontSize: largeFont,
-    },
-    paymentIcon: {
-        fontSize: largeFont + 2,
-        marginRight: Math.round(10 * scale),
-    },
-    selectionCheck: {
-        fontSize: largeFont,
-        color: successColor,
-    },
-    
-    finalizeButton: {
-      width: "100%", 
-      maxWidth: contentMaxWidth, 
-      backgroundColor: successColor, 
-      padding: Math.round(14 * scale),
-      marginTop: Math.round(20 * scale),
-      marginBottom: Math.round(14 * scale),
-      borderRadius: 10, 
-      alignItems: "center",
-      shadowColor: successColor,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 5,
-      elevation: 5,
-    },
-    finalizeButtonFixed: {
-        backgroundColor: successColor, 
-        padding: Math.round(14 * scale),
-        width: "100%", 
-        alignItems: "center",
-        shadowColor: successColor,
-        shadowOffset: { width: 0, height: -4 }, 
-        shadowOpacity: 0.35,
-        shadowRadius: 5,
-        elevation: 5,
-        position: 'absolute',
-        bottom: 0,
-        paddingBottom: Platform.OS === 'ios' ? Math.round(24 * scale) : Math.round(14 * scale) + Math.round(4 * scale), 
-    },
-    finalizeButtonText: { 
-        color: whiteColor, 
-        fontWeight: "800", 
-        fontSize: largeFont,
-    },
-    
-    summaryContainer: {
-      width: "100%",
-      maxWidth: contentMaxWidth, 
-      backgroundColor: whiteColor,
-      padding: Math.round(16 * scale), 
-      borderRadius: 12,
-      marginTop: Math.round(14 * scale),
-      borderLeftWidth: 5,
-      borderLeftColor: primaryColor, 
-      ...softShadow, 
-    },
-    // Estilo para o container de dados do cliente (para separação visual)
-    customerDetailsContainer: {
-        borderLeftColor: '#333', // Cor diferente para diferenciar
-        marginBottom: Math.round(15 * scale),
-    },
-    customerDetailTitle: {
-        fontSize: normalFont,
-        fontWeight: '900',
-        color: textColor,
-        marginBottom: Math.round(8 * scale),
-        textDecorationLine: 'underline',
-    },
-    customerDetailText: {
-        fontSize: normalFont,
-        color: secondaryTextColor,
-        marginBottom: Math.round(4 * scale),
-    },
-    totalBoxPayment: {
-        borderLeftColor: successColor,
-        alignItems: 'center',
-        paddingVertical: Math.round(20 * scale),
-        marginBottom: Math.round(10 * scale),
-    },
-    totalTextLarge: {
-        fontSize: titleFont + 4, 
-        fontWeight: "900",
-        color: successColor, 
-        marginTop: Math.round(8 * scale),
-    },
-    changeText: {
-        fontSize: normalFont,
-        fontWeight: "bold",
-        color: primaryColor,
-        marginTop: Math.round(8 * scale),
-    },
-    
-    // Controles de Troco
-    changeInputContainer: {
-        width: "100%",
-        maxWidth: contentMaxWidth, 
-        backgroundColor: whiteColor,
-        padding: Math.round(16 * scale), 
-        borderRadius: 12,
-        marginTop: Math.round(10 * scale),
-        borderLeftWidth: 5,
-        borderLeftColor: primaryColor, 
-        ...softShadow, 
-    },
-    changeInputLabel: {
-        fontSize: largeFont,
-        fontWeight: 'bold',
-        color: textColor,
-        marginBottom: Math.round(10 * scale),
-        textAlign: 'center',
-    },
-    changeSubLabel: {
-        fontSize: normalFont,
-        fontWeight: 'normal',
-        color: secondaryTextColor,
-        marginBottom: Math.round(10 * scale),
-        textAlign: 'center',
-    },
-    exactAmountButton: {
-        padding: Math.round(10 * scale),
-        borderRadius: 8,
-        borderWidth: 2,
-        borderColor: superLightGray,
-        backgroundColor: superLightGray,
-        alignItems: 'center',
-    },
-    exactAmountButtonSelected: {
-        borderColor: successColor,
-        backgroundColor: '#E8F5E9', // Verde bem clarinho
-    },
-    exactAmountButtonText: {
-        fontSize: normalFont,
-        fontWeight: 'bold',
-        color: textColor,
-    },
-    
-    cartItemCount: {
-      fontSize: normalFont,
-      fontWeight: "bold",
-      color: secondaryTextColor,
-      marginBottom: Math.round(8 * scale),
-    },
-    totalText: {
-      fontSize: Math.round(22 * scale), 
-      fontWeight: "800",
-      color: successColor, 
-      marginTop: Math.round(8 * scale),
-    },
-    totalTextHeader: {
-        fontSize: largeFont, 
-        fontWeight: "800",
-        color: primaryColor, 
-    },
-    paymentText: { 
-        fontSize: normalFont, 
-        fontWeight: "bold", 
-        color: textColor
-    },
-    emptyCartText: {
-      fontSize: normalFont,
-      color: secondaryTextColor,
-      textAlign: "center",
-      marginVertical: Math.round(20 * scale),
-    },
-    // --- TEXTOS GERAIS ---
-    title: { 
-      fontSize: titleFont,
-      fontWeight: "800",
-      textAlign: "center",
-      marginBottom: Math.round(10 * scale),
-      color: primaryColor, 
-    },
-    subtitle: { 
-      fontSize: Math.round(18 * scale),
-      fontWeight: "800",
-      marginBottom: Math.round(12 * scale),
-      color: whiteColor, 
-      textShadowColor: 'rgba(0, 0, 0, 0.75)',
-      textShadowOffset: {width: 1, height: 1},
-      textShadowRadius: 3,
-    },
-    subtitleSmall: { 
-        fontSize: Math.round(16 * scale),
-        fontWeight: "800",
-        marginTop: Math.round(10 * scale),
-        color: whiteColor, 
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: {width: 1, height: 1},
-        textShadowRadius: 3,
-      },
-    titleMenu: {
-        fontSize: largeFont, 
-        fontWeight: "800",
-        textAlign: "left",
-        color: textColor, 
-    },
-    cartBadgeMenu: {
-        fontSize: smallFont,
-        fontWeight: "bold",
-        color: secondaryTextColor, 
-    },
-    text: { 
-      fontSize: normalFont,
-      fontWeight: "bold",
-      textAlign: "center",
-      marginTop: Math.round(12 * scale),
-      color: whiteColor,
-      textShadowColor: 'rgba(0, 0, 0, 0.75)',
-      textShadowOffset: {width: 1, height: 1},
-      textShadowRadius: 3,
-    },
-    // Estilo para a mensagem de próximos passos
-    nextStepsText: {
-        fontSize: largeFont,
-        color: '#FFF',
-        fontWeight: '900',
-        paddingHorizontal: horizontalPadding,
-        paddingVertical: Math.round(10 * scale),
-        backgroundColor: 'rgba(76, 175, 80, 0.75)', // Verde do sucesso semi-transparente
-        borderRadius: 8,
-        marginVertical: Math.round(15 * scale),
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    }
-  });
-  
-  return { styles, scale, primaryColor }; 
 }
